@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+db.sqlite3
+
+# Env
+.env
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.vscode/
