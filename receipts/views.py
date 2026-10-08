@@ -46,7 +46,7 @@ def api_login(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
-    logout(requese)
+    logout(request)
     return Response({'success': True})
 
 @api_view(['GET'])
