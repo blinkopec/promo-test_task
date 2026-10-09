@@ -3,11 +3,40 @@
 Небольшое веб-приложение для промо-акции: покупатель регистрирует чек,
 модератор проверяет его через Django-админку.
 
+## Содержание
+
+- [Стек](#стек)
+- [Быстрый старт](#быстрый-старт)
+- [Переменные окружения](#переменные-окружения)
+- [Что сделано](#что-сделано)
+- [Спорные места и решения](#спорные-места-и-решения)
+- [Что не успели / можно улучшить](#что-не-успели--можно-улучшить)
+- [Структура проекта](#структура-проекта)
+- [Использование AI-ассистента](#использование-ai-ассистента)
+- [Лицензия](#лицензия)
+
 ## Стек
 
-- **Backend:** Python 3.12, Django 6.1, Django REST Framework, PostgreSQL 15
-- **Frontend:** React 18, Vite, React Router
-- **Инфраструктура:** Docker, Docker Compose
+## Стек
+
+### Backend
+
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-6.1-092E20?style=for-the-badge&logo=django&logoColor=white)
+![DRF](https://img.shields.io/badge/DRF-3.x-A30000?style=for-the-badge&logo=django&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+
+### Frontend
+
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![React Router](https://img.shields.io/badge/React_Router-6-CA4245?style=for-the-badge&logo=reactrouter&logoColor=white)
+
+### Инфраструктура
+
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
 
 ## Быстрый старт
 
