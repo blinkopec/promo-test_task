@@ -30,7 +30,7 @@ export default function LoginPage() {
     return (
         <div className="login-page">
             <div className="login-card">
-                <h3>Вход</h3>
+                <h1>Вход</h1>
                 <p className="subtitle">Войдите, чтобы зарегистрировать чек</p>
 
                 <form onSubmit={onSubmit}>
@@ -50,7 +50,9 @@ export default function LoginPage() {
                         />
                     </div>
 
-                   {error && <div className="error-message">{error}</div> }
+                    <div className="error-slot">
+                        {error && <div className="error-message">{error}</div>}
+                    </div>
 
                     <button type="submit" className="btn-primary" disabled={submitting}>
                         {submitting ? "Вход..." : "Войти"}
