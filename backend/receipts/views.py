@@ -56,7 +56,7 @@ def api_me(request):
         return Response({'authenticated': False})
     return Response({
         'authenticated': True,
-        'username': request.username,
+        'username': request.user.username,
         'is_staff': request.user.is_staff,
     })
 
