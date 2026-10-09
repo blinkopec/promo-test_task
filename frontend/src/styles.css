@@ -216,7 +216,25 @@ p {
   width: auto;
   padding: 10px 20px;
 }
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
 
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.empty-state .subtitle {
+  margin-bottom: 24px;
+}
 /* Header */
 
 .header {
