@@ -588,3 +588,41 @@ p {
     font-size: 18px;
   }
 }
+
+
+/* Форма подтверждения, что чек зарегестрирован */
+.success-card {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.success-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--color-success);
+  font-size: 40px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  border: 3px solid var(--color-success);
+  line-height: 1;
+}
+
+.success-card h1 {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.success-card .subtitle {
+  margin-bottom: 28px;
+  color: var(--color-text-secondary);
+}
