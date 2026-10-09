@@ -45,20 +45,21 @@ export default function DashboardPage() {
                     {error && <div className="error-message">{error}</div>}
 
                     {!loading && !error && receipts.length === 0 && (
-                        <div className="empty-state">
-                            <div className="empty-icon">📄</div>
-                            <h2>Здесь будет история ваших чеков</h2>
-                            <p className="subtitle">Вы не добавили еще ни одного чека</p>
-                            <button
-                                className="btn-primary btn-inline"
-                                onClick={() => navigate('/receipts/create')}
-                            >
-                                Зарегистрировать чек
-                            </button>
-                        </div>
+                    <div className="empty-state">
+                        <div className="empty-icon">📄</div>
+                        <h2>Здесь будет история ваших чеков</h2>
+                        <p className="subtitle">Вы не добавили еще ни одного чека</p>
+                        <button
+                            className="btn-primary btn-inline"
+                            onClick={() => navigate('/receipts/create')}
+                        >
+                            Зарегистрировать чек
+                        </button>
+                    </div>
                     )}
 
-                    {!loading && !error && receipts.length > 0 && (
+                   {!loading && !error && receipts.length > 0 && (
+                    <>
                         <table className="receipts-table">
                         <thead>
                             <tr>
@@ -70,15 +71,58 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                            <td>00:00 00.00.0000</td>
-                            <td><span className="status status-pending">В обработке</span></td>
-                            <td>12 000 ₽</td>
-                            <td>00:00 00.00.0000</td>
-                            <td>Чек в обработке</td>
+                            {receipts.map((receipt) => (
+                            <tr key={receipt.id}>
+                                <td>{new Date(receipt.purchase_datetime).toLocaleString('ru-RU')}</td>
+                                <td>
+                                <span className={`status status-${receipt.status}`}>
+                                    {receipt.status_display}
+                                </span>
+                                </td>
+                                <td>{receipt.amount} ₽</td>
+                                <td>{new Date(receipt.created_at).toLocaleString('ru-RU')}</td>
+                                <td>
+                                {receipt.status === 'rejected'
+                                    ? receipt.rejection_reason
+                                    : receipt.status === 'pending'
+                                    ? 'Чек в обработке'
+                                    : 'Чек принят'}
+                                </td>
                             </tr>
+                            ))}
                         </tbody>
                         </table>
+
+                        {totalPages > 1 && (
+                        <div className="pagination">
+                            <button
+                            className="page-btn"
+                            disabled={currentPage === 1}
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            >
+                            ‹
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <button
+                                key={page}
+                                className={`page-btn ${page === currentPage ? 'active' : ''}`}
+                                onClick={() => setCurrentPage(page)}
+                            >
+                                {page}
+                            </button>
+                            ))}
+
+                            <button
+                            className="page-btn"
+                            disabled={currentPage === totalPages}
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            >
+                            ›
+                            </button>
+                        </div>
+                        )}
+                    </>
                     )}
 
                     <div className="dashboard-footer">
