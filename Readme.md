@@ -10,6 +10,7 @@
 - [Переменные окружения](#переменные-окружения)
 - [Скриншоты](#скриншоты)
 - [Что сделано](#что-сделано)
+- [Тесты](#тесты)
 - [Спорные места и решения](#спорные-места-и-решения)
 - [Что не успели / можно улучшить](#что-не-успели--можно-улучшить)
 - [Структура проекта](#структура-проекта)
@@ -21,7 +22,7 @@
 ### Backend
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Django](https://img.shields.io/badge/Django-6.1-092E20?style=for-the-badge&logo=django&logoColor=white)
+![Django](https://img.shields.io/badge/Django-5.x-092E20?style=for-the-badge&logo=django&logoColor=white)
 ![DRF](https://img.shields.io/badge/DRF-3.x-A30000?style=for-the-badge&logo=django&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 
@@ -43,7 +44,6 @@
 
 - Docker и Docker Compose
 
-
 ### Запуск
 
 ```bash
@@ -58,6 +58,9 @@ cp .env.example .env
 
 # 4. Собрать и запустить
 docker compose up --build
+
+# 5. (по желанию) прогнать тесты
+docker compose exec web python manage.py test
 ```
 
 Сайт откроется на:
@@ -99,6 +102,11 @@ docker compose down
 | `PROMO_START_DATE` | Начало акции, `YYYY-MM-DD` | `2026-01-01` |
 | `PROMO_END_DATE` | Конец акции, `YYYY-MM-DD` | `2026-12-31` |
 
+Часовой пояс акции зафиксирован в коде константой
+`PROMO_TZ = ZoneInfo("Europe/Moscow")` (`receipts/serializers.py`)
+и не зависит от `settings.TIME_ZONE`. В `settings.py` выставлено
+`TIME_ZONE = "Europe/Moscow"` для единообразия (админка, `created_at`).
+
 ## Скриншоты
 
 | Вход | Личный кабинет |
@@ -124,12 +132,25 @@ docker compose down
 
 Форма с серверной валидацией (DRF-сериализатор) **и** клиентской (JS в React):
 
-- Дата покупки входит в период акции из `.env`
+- Дата покупки входит в период акции из `.env` (границы — по МСК)
 - Сумма не меньше 1000 ₽
 - ФН — ровно 16 цифр
 - ФД и ФП — от 1 до 10 цифр
 - Связка ФН+ФД+ФП уникальна — второй раз тот же чек не принимается
 - Новый чек всегда попадает в статус «На проверке»
+
+### Регистрация покупателя
+
+Свободная регистрация через `POST /api/auth/register/`:
+
+- `username` — уникальный, стандартная валидация Django;
+- `password` + `password_confirm` — проверка совпадения и
+  `AUTH_PASSWORD_VALIDATORS` (длина, распространённость, цифры);
+- после успешной регистрации пользователь сразу авторизован
+  (`login()` на бэкенде, `sessionid` cookie) и попадает в личный кабинет.
+
+Страница `/register` на фронте: форма с клиентской проверкой совпадения
+паролей и серверными ошибками рядом с полями.
 
 ### Личный кабинет
 
@@ -145,6 +166,8 @@ docker compose down
 
 - `GET /api/receipts/` — чеки текущего пользователя (пагинация по 10)
 - `POST /api/receipts/` — создать чек
+- `POST /api/auth/register/` — регистрация покупателя (`username`,
+  `password`, `password_confirm`); после успеха — `201` и сессия
 - `POST /api/auth/login/` — вход
 - `POST /api/auth/logout/` — выход
 - `GET /api/auth/me/` — информация о текущем пользователе
@@ -152,33 +175,69 @@ docker compose down
 - `GET /api/csrf/` — установка CSRF-cookie
 
 Чужие чеки недоступны ни при каких параметрах запроса: queryset
-во `ViewSet` фильтруется по `request.user`.
+во `ViewSet` фильтруется по `request.user`. `user` из payload игнорируется —
+владелец всегда `request.user`.
 
 ### Фронтенд
 
 React + Vite. Два экрана из макета (регистрация чека, личный кабинет) +
-страница входа + экран успеха после отправки чека.
+страница входа + страница регистрации + экран успеха после отправки чека.
 
 Формы с клиентской валидацией до отправки, ошибки подсвечиваются рядом с полями.
-Отправка через `fetch` с CSRF-токеном. Успех и ошибка выглядят по-разному.
+Отправка через `fetch` с CSRF-токеном (`apiFetch` в `src/api.js`). Успех
+и ошибка выглядят по-разному.
 
 Мобильная адаптация: на ширине 375px таблица превращается в карточки,
 хедер перестраивается, горизонтального скролла нет.
 
-## Спорные места и решения
+## Тесты
 
+```bash
+docker compose exec web python manage.py test
+```
+
+Покрытие (`receipts/tests/`):
+
+- **`test_validation.py`** — форматы ФН/ФД/ФП, минимальная сумма, границы
+  периода акции в МСК (включая `00:00:00` первого дня и `23:59:59.999999`
+  последнего, naive/UTC-вход), статус нового чека;
+- **`test_duplicate.py`** — последовательный дубль → `400`; гонка двух
+  параллельных `POST` (`TransactionTestCase` + `threading.Barrier`) →
+  ровно один `201`, второй `400`, не `500`;
+- **`test_isolation.py`** — пользователь видит только свои чеки, аноним
+  получает `401/403`, `user` из payload игнорируется;
+- **`test_registration.py`** — успех, дубль `username`, несовпадение
+  паролей, слабый пароль.
+
+23 теста, все зелёные.
+
+## Спорные места и решения
 
 ### Границы периода акции
 
 **Решение:** период акции задаётся в `.env` (`PROMO_START_DATE`,
 `PROMO_END_DATE`) и трактуется как **календарные дни в московском времени**
-(`Europe/Moscow`). Начало — `00:00:00` первого дня, конец — `23:59:59`
+(`Europe/Moscow`). Начало — `00:00:00` первого дня, конец — `23:59:59.999999`
 последнего дня, включительно.
+
+В коде пояс зафиксирован константой `PROMO_TZ = ZoneInfo("Europe/Moscow")`
+(`receipts/serializers.py`) и **не зависит** от `settings.TIME_ZONE` или
+`timezone.get_current_timezone()`. Это исключает расхождение «в README Москва,
+в коде Новосибирск»: границы всегда считаются по Москве, независимо от
+глобальных настроек. `TIME_ZONE = "Europe/Moscow"` в `settings.py` выставлен
+для единообразия (админка, `created_at`).
 
 **Почему:** акция организована в России, границы логично задавать в часовом
 поясе организатора. При использовании UTC пришлось бы объяснять пользователю
 сдвиг: «1 января по UTC — это 1 января с 03:00 по Москве». Пользователь
 из другого часового пояса должен указывать дату покупки в московском времени.
+
+**Тесты:** `test_purchase_at_start_boundary_msk_accepted`,
+`test_purchase_at_end_boundary_msk_accepted`,
+`test_purchase_before_start_msk_rejected`,
+`test_purchase_after_end_msk_rejected`,
+`test_naive_datetime_treated_as_moscow`,
+`test_utc_datetime_converted_to_moscow`.
 
 ### Длины ФН, ФД, ФП
 
@@ -193,10 +252,21 @@ React + Vite. Два экрана из макета (регистрация че
 
 ### Регистрация пользователей
 
-**Решение:** свободная регистрация **не реализована**. Пользователи создаются
-администратором через Django-админку или `createsuperuser`.
+**Решение:** свободная регистрация реализована через
+`POST /api/auth/register/` (DRF `APIView` + `RegisterSerializer`).
+Пользователь вводит `username`, `password`, `password_confirm`; после
+успеха сразу авторизован (сессия Django). Альтернативный путь —
+`createsuperuser` / админка — остаётся для модераторов.
 
-**Почему:** задание требует только вход и регистрацию чека.
+**Почему:** без самостоятельной регистрации покупатель не может
+зарегистрировать чек — админский `createsuperuser` не является
+пользовательским сценарием. Свободная регистрация — ожидаемая часть
+личного кабинета.
+
+**Тесты:** `test_register_success_creates_user_and_logs_in`,
+`test_register_duplicate_username_rejected`,
+`test_register_password_mismatch_rejected`,
+`test_register_weak_password_rejected`.
 
 ### Логин через API, а не Django-шаблон
 
@@ -206,8 +276,8 @@ React + Vite. Два экрана из макета (регистрация че
 
 **Почему:** задание разрешает оставить вход на дефолтных шаблонах Django,
 но при выборе React дефолтные HTML-формы не подходят — они возвращают
-HTML. Мы используем стандартную систему
-аутентификации Django, только оборачиваем её в JSON-ответ.
+HTML. Мы используем стандартную систему аутентификации Django, только
+оборачиваем её в JSON-ответ.
 
 ### Статусы
 
@@ -219,30 +289,36 @@ HTML. Мы используем стандартную систему
 Для него понадобилась бы логика случайного выбора, уведомлений и отображения
 победителей.
 
-
 ### Race condition при создании чека
 
 **Решение:** уникальность ФН+ФД+ФП гарантируется на уровне БД через
-`UniqueConstraint`. При параллельных запросах второй упадёт с
-`IntegrityError`, который мы перехватываем и возвращаем пользователю понятную
-ошибку.
+`UniqueConstraint`. Последовательный дубль ловится в
+`ReceiptSerializer.validate()` (`filter().exists()` → `400`). При
+**параллельных** запросах оба могут пройти `validate()`, и второй
+`objects.create()` упадёт с `IntegrityError`; он перехватывается в
+`ReceiptSerializer.create()` и превращается в `ValidationError` →
+HTTP `400` с сообщением «Чек с такими ФН+ФД+ФП уже зарегистрирован».
+`500` не возникает.
 
 **Почему:** проверка на уровне Python (`filter().exists()`) не защищает от
 гонки — два одновременных POST могут оба пройти проверку до вставки.
-Уникальный индекс в Postgres закрывает эту дыру.
+Уникальный индекс в Postgres закрывает эту дыру, а перехват
+`IntegrityError` превращает её в понятный `400`.
+
+**Тест:** `test_parallel_duplicate_returns_400` (`TransactionTestCase` +
+`threading.Barrier`, ожидание `[201, 400]`, в БД одна запись).
 
 ## Что не успели / можно улучшить
 
-- Свободная регистрация пользователей
 - Розыгрыш и статус «Вы выиграли»
 - QR-код чека
-- Автотесты (unit, integration)
 - Production-сборка: `gunicorn` + `nginx` вместо dev-серверов Django и Vite,
   `collectstatic`, `whitenoise`, `DEBUG=False`
 - Автодокументация API через `drf-spectacular` (Swagger UI)
 - Rate limiting на API
 - Логирование и мониторинг (Sentry)
 - CI/CD (GitHub Actions: линтеры, тесты, сборка)
+- Фронтенд-тесты (vitest + testing-library)
 - Двуязычный интерфейс
 
 ## Структура проекта
@@ -252,15 +328,16 @@ promo/
 ├── backend/
 │   ├── promo/              # настройки Django
 │   ├── receipts/           # приложение: модели, вьюхи, сериализаторы
+│   │   └── tests/          # тесты: validation, duplicate, isolation, registration
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── manage.py
 ├── frontend/
 │   ├── src/
-│   │   ├── api.js          # обёртка fetch с CSRF
+│   │   ├── api.js          # обёртка fetch с CSRF (apiFetch)
 │   │   ├── auth/           # контекст авторизации
 │   │   ├── components/     # общие компоненты (Header)
-│   │   ├── pages/          # страницы (Login, ReceiptForm, Dashboard)
+│   │   ├── pages/          # страницы (LoginPage, Register, ReceiptForm, Dashboard)
 │   │   └── styles.css
 │   ├── Dockerfile
 │   ├── package.json
@@ -278,12 +355,13 @@ Stack Overflow или IDE с автодополнением.
 
 ### Где AI помог
 
-- **Объяснение незнакомых концепций** — 
-  `, разница между `psycopg2` и `psycopg`, работа `.env`
-  в Docker-контейнерах
+- **Объяснение незнакомых концепций** — разница между `psycopg2` и `psycopg`,
+  работа `.env` в Docker-контейнерах
 - **Помощь с синтаксисом React** — `useState` с объектами, spread-оператор,
   dynamic keys (`[name]: value`), стрелочные функции, возвращающие объект
-- **Отладка ошибок** 
+- **Отладка ошибок** — `ImportError` при обходе тестов (`sys.path`),
+  `QuerySet.create() got multiple values for 'user'`, `timezone.utc` в
+  Django 5, CORS/CSRF при регистрации с фронта
 - **Структура проекта** — обсуждение архитектурных решений
 
 ### Что я делал сам
@@ -293,7 +371,6 @@ Stack Overflow или IDE с автодополнением.
 - **Писал код** — каждую строку я набирал сам, разбираясь с синтаксисом
 - **Проверял работу** — запускал, тестировал, отлаживал, принимал результат
 - **Формулировал требования** к AI и уточнял, если что-то непонятно
-
 
 ## Лицензия
 
